@@ -29,10 +29,10 @@ ROW_NO_INDEX = 1
 def parse_command_line(args):
     parser = argparse.ArgumentParser()
     parser.add_argument("sup_org_file", metavar="Supervisory Org File with Dependencies")
-    parser.add_argument("-l", "--location", action="append", help="Location file (names and ref ids)")
-    parser.add_argument("-m", "--manager", action="append", help="Manager file (name and ref id)") # Assumes entire file is managers only
-    parser.add_argument("-j", "--job-change", action="append", help="Job change file (Position id to emp id)")
-    parser.add_argument("-p", "--pre-hire", action="append", help="Pre-hire file (Emp name and id)")
+    parser.add_argument("-l", "--location", metavar="Location iLoad file", action="append", help="Location file (names and ref ids)")
+    parser.add_argument("-m", "--manager", metavar="Role Based Security Assignment iLoad file", action="append", help="Manager file (name and ref id)") # Assumes entire file is managers only
+    parser.add_argument("-j", "--job-change", metavar="Job Change iLoad file(s)", action="append", help="Job change file (Position id to emp id)")
+    parser.add_argument("-p", "--pre-hire", metavar="Pre-hire iLoad file(s)", action="append", help="Pre-hire file (Emp name and id)")
     return parser.parse_args(args[1:])
 
 def main(argv):
@@ -50,6 +50,7 @@ def main(argv):
 
     # Process sup org file
     with open(args.sup_org_file, "rU") as csvfile:
+        debug("Processing supervisory organization file {}".format(args.sup_org_file))
         reader = csv.reader(csvfile)
         # go through each row of data and create necessary data structures
         for row in reader:
@@ -80,6 +81,15 @@ def main(argv):
     for so in sup_org_dict.values():
         if not so.is_top_level:
             so.parent = sup_org_dict[so.parent_id]
+
+    # Do a cycle check
+    for so in top_level_sup_orgs:
+        so.cycle_check(list())
+    for so in sup_org_dict.values(): # Needed to find missing top level orgs
+        # Every org should have been touched above. If there is a cycle there weill be orgs
+        # that have not yet been traversed
+        if not so.traversed:
+            so.cycle_check(list())
 
     # Now get location names if given
     if args.location:
@@ -157,7 +167,8 @@ def main(argv):
             doc.asis('<meta name="viewport" content="width=device-width, initial-scale=1">',
                     '<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">',
                     '<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>',
-                    '<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>')
+                    '<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>',
+                     '<style>.list_group { padding: 20px 40px; } .list-group-item { border: 0 none !important; } </style>')
         with tag("body"):
             with tag("div", klass="container"):
                 with tag("h2"):

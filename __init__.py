@@ -5,7 +5,7 @@ from yattag import Doc, indent
 logging.basicConfig(datefmt="%H:%M:%S", format="%(asctime)s %(message)s")
 l = logging.getLogger()
 l.setLevel(logging.DEBUG)
-debug = l.debug
+debug = l.info
 info = l.info
 error = l.error
 

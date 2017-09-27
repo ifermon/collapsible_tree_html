@@ -19,6 +19,7 @@ class Supervisory_Organization(object):
         self._manager = None
         self._seq = Seq_Generator().id
         self._children = []
+        self._traversed = False
         return
 
     def add_manager(self, manager):
@@ -29,6 +30,22 @@ class Supervisory_Organization(object):
         self._children.append(sup_org)
         return
 
+    def cycle_check(self, stack):
+        if self._traversed:
+            error("Found cyclic error. Print stack")
+            for so in stack:
+                error(so)
+            sys.exit()
+        else:
+            stack.append(self)
+            self._traversed = True
+            for c in self._children:
+                c.cycle_check(stack)
+            stack.pop()
+        return
+
+    @property
+    def traversed(self): return self._traversed
     @property
     def is_top_level(self): return self._is_top_level
     @property
@@ -62,8 +79,10 @@ class Supervisory_Organization(object):
                 with tag("p"):
                     with tag("a", ("data-toggle","collapse"), href="#{}".format(self.id)):
                         with tag("b", klass="panel-title"):
-                                text("{} ({})".format(self.name, self.id))
-                        text(" Manager {} Location: {}".format(self._manager, self.location))
+                            text("{} ({})".format(self.name, self.id))
+                            doc.asis("<br>")
+                    with tag("span", style="font-size:0.8em", klass="panel-title"):
+                        text(" {} {}".format(self._manager, self.location))
             if self._children:
                 with tag("div", id="{}".format(self.id), klass="panel-collapse collapse"):
                     with tag("ul", klass="list_group"):
@@ -71,6 +90,9 @@ class Supervisory_Organization(object):
                             with tag("li", klass="list-group-item"):
                                 doc.asis(c.to_html())
         return doc.getvalue()
+
+    def __repr__(self):
+        return "{} ({})".format(self.name, self.id)
 
 
 
@@ -92,7 +114,7 @@ class Location(object):
     def ref_id(self): return self._ref_id
 
     def __repr__(self):
-        return self.name
+        return "{} ({})".format(self.name, self.ref_id)
 
 class Manager(object):
     def __init__(self, position_id, emp_id=None, name=None):
