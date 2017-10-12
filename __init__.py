@@ -28,7 +28,7 @@ class Auto_Number(Enum):
         obj._value_ = value
         return obj
 
-class Org_Type(Auto_Number):
+class Org_Types(Auto_Number):
     COMPANY = ()
     COST_CENTER = ()
     HR_VISIBILTY = ()
@@ -51,5 +51,27 @@ class Org_Type(Auto_Number):
     INDIA_HOLIDAY_CALENDAR_INDIA_FOODS_USE_ONLY = ()
     REGION = ()
 
-class Role(Auto_Number):
-    MANAGER = ()
+    def __lt__(self, other):
+        return self.name < other.name
+
+class Roles(Auto_Number):
+    Manager = ()
+    HR_Business_Support_Supervisory = ()
+    HR_Business_Partner_Supervisory = ()
+    Compensation_COE_Partner = ()
+    Executive_Comp_Leader = ()
+    Executive_Compensation = ()
+    Global_Mobility_Partner = ()
+    HR_Direct_HR_Partner_by_Supervisory_Org = ()
+    Organization_Partner = ()
+    Stock_Partner = ()
+    Talent_Partner = ()
+    Succession_Partner = ()
+    ASSIGNABLE_ROLE_6_127 = ()
+    ASSIGNABLE_ROLE_6_129 = ()
+    ASSIGNABLE_ROLE_6_130 = ()
+    Primary_Recruiter = ()
+    HD_Operations_Leadership = ()
+
+
+

@@ -1,5 +1,6 @@
 from __init__ import *
 from weakref import WeakSet
+import operator
 """
     A note about Organization vs. Supervisory Organization. Supervisory Organization is the "master". Organization
     is just an attribute. Organizations are things like Company, Cost Center, Segment, Region, etc
@@ -48,7 +49,7 @@ class Supervisory_Organization(base):
         self._location_id = location_id
         self._location = None
         self._subtype = org_subtype
-        self._manager = None
+        self._role_list = []
         self._seq = Seq_Generator().id
         self._children = []
         self._traversed = False
@@ -58,11 +59,12 @@ class Supervisory_Organization(base):
     def propagate_custom_orgs(self):
         """ Go through my parent's default orgs. If I have a value, use it. If I don't then use my parent's value """
         if self._parent: # Make sure I have a parent
-            for org_type, def_org in self._parent.default_orgs.iteritems():
-                if self._org_id == "10305356":
-                    debug("Here I am")
+            for org_type, def_org in self._parent.get_default_orgs().iteritems():
                 if org_type not in self._default_orgs:
                     self.add_default(def_org.org, True)
+        for c in self._children:
+            c.propagate_custom_orgs()
+        return
 
     def add_default(self, default_org, inherited=False):
         if type(default_org) != Organization:
@@ -72,8 +74,13 @@ class Supervisory_Organization(base):
         self._default_orgs[default_org.org_type] = do
         return
 
-    def add_manager(self, manager):
-        self._manager = manager
+    def add_role(self, role):
+        if type(role) != Role:
+            error("Invalid role_type type passed")
+            raise TypeError
+        if role in self._role_list:  # Dup roles are an issue if using "super" file. Remove existing and replace
+            self._role_list.remove(role)
+        self._role_list.append(role)
         return
 
     def add_child(self, sup_org):
@@ -121,8 +128,148 @@ class Supervisory_Organization(base):
         self._parent = parent
         parent.add_child(self)
         return
-    @property
-    def default_orgs(self): return self._default_orgs
+
+    def get_default_orgs(self):
+        return self._default_orgs
+
+    def to_html_collapse_table_w_roles(self):
+        doc, tag, text = Doc().tagtext()
+        with tag("div", klass="panel panel-default"):
+            with tag("div", klass="panel-heading", display="inline"):
+                with tag("p"):
+                    with tag("a", ("data-toggle","collapse"), href="#{}".format(self.id)):
+                        with tag("b", klass="panel-title"):
+                            text("{} ({})".format(self.name, self.id))
+                    with tag("span", style="font-size:0.8em", klass="panel-title"):
+                        with tag("strong"):
+                            text("  Location: ")
+                        text(" {} ".format(self._location))
+                        doc.stag("br")
+
+                        with tag("table"):
+                            with tag("tr"):
+                                with tag("th"):
+                                    with tag("a", ("data-toggle","collapse"), href="#Roles{}".format(self.id)):
+                                        text("Roles:")
+                                with tag("th"):
+                                    with tag("a", ("data-toggle","collapse"), href="#Defaults{}".format(self.id)):
+                                        text("Organization Defaults:")
+                            with tag("tr"):
+                                with tag("td"):
+                                    with tag("div", id="Roles{}".format(self.id), klass="panel-collapse collapse"):
+                                        if self._role_list:
+                                            with tag("table"):
+                                                for r in self._role_list:
+                                                    with tag("tr"):
+                                                        with tag("td"):
+                                                            text(r.name)
+                                                        with tag("td"):
+                                                            w_list = r.get_workers()
+                                                            #if len(w_list) == 1:
+                                                                        #text(w_list[0])
+                                                            #else:
+                                                            for w in w_list:
+                                                                text(str(w))
+                                                                doc.stag("br")
+                                with tag("td"):
+                                    with tag("div", id="Defaults{}".format(self.id), klass="panel-collapse collapse"):
+                                        with tag("table"):
+                                            with tag("tr"):
+                                                for col_heading in ["Organization Type", "Organization Name", "Inherited (T/F)"]:
+                                                    with tag("th"):
+                                                        text(col_heading)
+                                            for k, v in sorted(self._default_orgs.items(), key=operator.itemgetter(0)):
+                                                with tag("tr"):
+                                                    for txt in [k.name, v.org, v.inherited]:
+                                                        with tag("td"):
+                                                            text(str(txt))
+            if self._children:
+                with tag("div", id="{}".format(self.id), klass="panel-collapse collapse"):
+                    with tag("ul", klass="list_group"):
+                        for c in self._children:
+                            with tag("li", klass="list-group-item"):
+                                doc.asis(c.to_html_collapse_table_w_roles())
+        return doc.getvalue()
+
+    def to_html_collapse_table(self):
+        doc, tag, text = Doc().tagtext()
+        with tag("div", klass="panel panel-default"):
+            with tag("div", klass="panel-heading", display="inline"):
+                with tag("p"):
+                    with tag("a", ("data-toggle","collapse"), href="#{}".format(self.id)):
+                        with tag("b", klass="panel-title"):
+                            text("{} ({})".format(self.name, self.id))
+                            doc.asis("<br>")
+                    with tag("span", style="font-size:0.8em", klass="panel-title"):
+                        with tag("strong"):
+                            text("Manager:")
+                        text(" {} ".format(self._role_list.worker))
+                        if self._role_list.inherited:
+                            text("[Inherited]")
+                        with tag("strong"):
+                            text("Location: ")
+                        text(" {} ".format(self._location))
+                        if len(self._default_orgs):
+                            doc.stag("br")
+                            with tag("strong"):
+                                with tag("a", ("data-toggle","collapse"), href="#Defaults{}".format(self.id)):
+                                    text("Defaults: ")
+                            with tag("div", id="Defaults{}".format(self.id), klass="panel-collapse collapse"):
+                                with tag("table"):
+                                    with tag("tr"):
+                                        for col_heading in ["Organization Type", "Organization Name", "Inherited (T/F)"]:
+                                            with tag("th"):
+                                                text(col_heading)
+                                    #for k, v in self._default_orgs.iteritems():
+                                    for k, v in sorted(self._default_orgs.items(), key=operator.itemgetter(0)):
+                                        with tag("tr"):
+                                            for txt in [k.name, v.org, v.inherited]:
+                                                with tag("td"):
+                                                    text(str(txt))
+            if self._children:
+                with tag("div", id="{}".format(self.id), klass="panel-collapse collapse"):
+                    with tag("ul", klass="list_group"):
+                        for c in self._children:
+                            with tag("li", klass="list-group-item"):
+                                doc.asis(c.to_html_collapse_table())
+        return doc.getvalue()
+
+    def to_html_collapse(self):
+        doc, tag, text = Doc().tagtext()
+        with tag("div", klass="panel panel-default"):
+            with tag("div", klass="panel-heading", display="inline"):
+                with tag("p"):
+                    with tag("a", ("data-toggle","collapse"), href="#{}".format(self.id)):
+                        with tag("b", klass="panel-title"):
+                            text("{} ({})".format(self.name, self.id))
+                            doc.asis("<br>")
+                    with tag("span", style="font-size:0.8em", klass="panel-title"):
+                        with tag("strong"):
+                            text("Manager:")
+                        text(" {} ".format(self._role_list.worker))
+                        if self._role_list.inherited:
+                            text("[Inherited]")
+                        with tag("strong"):
+                            text("Location: ")
+                        text(" {} ".format(self._location))
+                        if len(self._default_orgs):
+                            doc.stag("br")
+                            with tag("strong"):
+                                with tag("a", ("data-toggle","collapse"), href="#Defaults{}".format(self.id)):
+                                    text("Defaults: ")
+                            with tag("div", id="Defaults{}".format(self.id), klass="panel-collapse collapse"):
+                                with tag("ul", klass="list-group"):
+                                    for k, v in self._default_orgs.iteritems():
+                                        with tag("li", klass="list-group-item", style="white-space: pre;margin-left: 10px; font-size:0.8em; padding-top:0px; padding-bottom:0px"):
+                                            text("{:30}  {}".format(k.name, v))
+
+            if self._children:
+                with tag("div", id="{}".format(self.id), klass="panel-collapse collapse"):
+                    with tag("ul", klass="list_group"):
+                        for c in self._children:
+                            with tag("li", klass="list-group-item"):
+                                doc.asis(c.to_html_collapse())
+        return doc.getvalue()
 
     def to_html(self):
         doc, tag, text = Doc().tagtext()
@@ -136,8 +283,8 @@ class Supervisory_Organization(base):
                     with tag("span", style="font-size:0.8em", klass="panel-title"):
                         with tag("strong"):
                             text("Manager:")
-                        text(" {} ".format(self._manager.worker))
-                        if self._manager.inherited:
+                        text(" {} ".format(self._role_list.worker))
+                        if self._role_list.inherited:
                             text("[Inherited]")
                         with tag("strong"):
                             text("Location: ")
@@ -193,6 +340,9 @@ class Position(base):
     def __init__(self, position_id, supervisory_org, role, worker=None):
         self._pos_id = position_id
         self._inherited = False
+        if type(role) != Role:
+            error("Invalid type for role_type passed to position")
+            raise TypeError
         self._role = role
         if type(supervisory_org) != Supervisory_Organization:
             error("Invalid org_type passed to Manager __init__")
@@ -200,6 +350,8 @@ class Position(base):
         self._org = supervisory_org  # Object, not ID
         if worker:
             self.assign_worker(worker)
+        else:
+            self._worker = Worker("UNKNOWN", position_id)
         return
 
     def assign_worker(self, worker):
@@ -225,12 +377,46 @@ class Position(base):
         return ret_str
 
 
+class Role(base):
+    def __init__(self, role_type, sup_org):
+        if type (role_type) != Roles:
+            error("Invalid role_type type passed")
+            raise TypeError
+        if type(sup_org) != Supervisory_Organization:
+            error("Invalid sup org type send to Role")
+            raise TypeError
+        self._position_list = []
+        self._sup_org = sup_org
+        self._role = role_type
+        return
+
+    def add_position(self, position):
+        if type(position) != Position:
+            error("Invalid position passed to add_position")
+            raise TypeError
+        self._position_list.append(position)
+        return
+
+    @property
+    def role_type(self): return self._role
+    @property
+    def name(self): return self._role.name
+
+    def get_workers(self):
+        ret_list = []
+        for p in self._position_list:
+            ret_list.append(p.worker)
+        return ret_list
+
+    def __eq__(self, other):
+        return self.role_type == other.role_type
+
 class Default_Organization(base):
     """
         This object represents those organizations specified as "defaults" for a given supervisory organization
         It points to both the supervisory org that it belongs to and to the referenced org.
         This really exists because the inherited flag is specific to the sup org, not to the org
-    """
+   """
     def __init__(self, sup_org, org, inherited=False):
         if type(sup_org) != Supervisory_Organization:
             error("Invalid org_type for supervisory org in Default Organization")
@@ -271,6 +457,9 @@ class Worker(base):
 
     @property
     def name(self): return self._name
+    @name.setter
+    def name(self, name):
+        self._name = name
     @property
     def emp_id(self): return self._emp_id
 
