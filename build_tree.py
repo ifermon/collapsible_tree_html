@@ -102,14 +102,15 @@ def parse_command_line(args):
     parser = argparse.ArgumentParser()
     parser.add_argument("sup_org_file", nargs="+", metavar="Supervisory Org File with Dependencies")
     parser.add_argument("-l", "--location", metavar="Location iLoad file", action="append", help="Location file (names and ref ids)")
-    parser.add_argument("--roles", metavar="Role Based Security Assignment iLoad file", action="append", help="Role based security file (name and ref id)")
-    parser.add_argument("--job-change", metavar="Job Change iLoad file(s)", action="append", help="Job change file (Position id to emp id)")
-    parser.add_argument("--pre-hire", metavar="Pre-hire iLoad file(s)", action="append", help="Pre-hire file (Emp name and id)")
+    parser.add_argument("-roles", metavar="Role Based Security Assignment iLoad file", action="append", help="Role based security file (name and ref id)")
+    parser.add_argument("-job-change", metavar="Job Change iLoad file(s)", action="append", help="Job change file (Position id to emp id)")
+    parser.add_argument("-pre-hire", metavar="Pre-hire iLoad file(s)", action="append", help="Pre-hire file (Emp name and id)")
     parser.add_argument("-company", help="Company names and reference ids")
     parser.add_argument("-region", help="Region names and reference ids")
     parser.add_argument("-cost-center", help="Cost center names and reference ids")
-    parser.add_argument("-custom-organization", help="Custom organization names, reference ids and types")
-    parser.add_argument("-custom-org-defaults", help="Custom organization defaults Kate iLoad")
+    parser.add_argument("-custom-organization", help="File containing custom organization names, reference ids and types")
+    parser.add_argument("-custom-org-defaults", help="File containint custom organization defaults Kate iLoad")
+    parser.add_argument("-iload", help="Generate an iLoad ready csv file for Supervisory Organization Assignment Restrictions and Defaults")
     parser.add_argument("-s", "--super", action="store_true", help="Use one or more file(s) that have everything but custom org defaults, default org names and location names")
     parser.add_argument("-propagate-custom-orgs", action="store_true", help="Propogate custom orgs down the hierarchy.")
     return parser.parse_args(args[1:])
@@ -294,8 +295,6 @@ def main(argv):
                     so.add_role(role)
                     if current_position_id not in position_dict:
                         position = Position(current_position_id, so, role)
-                        if current_position_id == "72027620":
-                            debug("Adding position to dict")
                         position_dict[current_position_id] = position
                     role.add_position(position_dict[current_position_id])
 
@@ -314,11 +313,7 @@ def main(argv):
                     if position_id not in position_dict:
                         continue
                     emp_id = row[JOB_CHANGE_FILE_EMP_ID_I]
-                    if position_id == "72027620":
-                        debug("found her position")
                     if emp_id not in worker_dict:
-                        if emp_id == "10249":
-                            debug("adding her to worker dict")
                         worker = Worker(None, emp_id)
                         worker_dict[emp_id] = worker
                     position_dict[position_id].assign_worker(worker_dict[emp_id])
@@ -334,16 +329,11 @@ def main(argv):
                     except ValueError:
                         continue
                     emp_id = row[NAME_FILE_EMP_ID_I][2:] # Remove the A- of applicatant ID
-                    if emp_id == "10249":
-                        debug("Found her in pre hire")
                     if emp_id not in worker_dict:
                         continue
                     fname = row[NAME_FILE_FNAME_I]
                     lname = row[NAME_FILE_LNAME_I]
                     worker_dict[emp_id].name = "{} {}".format(fname, lname)
-                    if emp_id == "10249":
-                        debug("Found her in pre hire")
-                        debug("{}".format(worker_dict[emp_id]))
 
     if args.custom_org_defaults: # Get the custom org defaults (e.g. SEGMENT)
         with open(args.custom_org_defaults, "rU") as csvfile:
@@ -417,6 +407,15 @@ def main(argv):
         for so in top_level_sup_orgs:
             so.propagate_custom_orgs()
 
+    # Generate iLoad for org defaults if specified
+    if args.iload:
+        with open(args.iload, "wb") as csvfile:
+            writer = csv.writer(csvfile)
+            ctr = 1
+            for so in sup_org_dict.values():
+                for row in so.to_Assignment_Restrictions_and_Defaults_iLoad():
+                    writer.writerow(["", ctr] + row)
+                ctr += 1
     # Now print
     doc, tag, text = Doc().tagtext()
     doc.asis("<!DOCTYPE html>")

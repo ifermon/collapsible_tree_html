@@ -53,14 +53,15 @@ class Supervisory_Organization(base):
         self._seq = Seq_Generator().id
         self._children = []
         self._traversed = False
-        self._default_orgs = {}
+        self._default_orgs_dict = {}
+        self._manager = None
         return
 
     def propagate_custom_orgs(self):
         """ Go through my parent's default orgs. If I have a value, use it. If I don't then use my parent's value """
         if self._parent: # Make sure I have a parent
             for org_type, def_org in self._parent.get_default_orgs().iteritems():
-                if org_type not in self._default_orgs:
+                if org_type not in self._default_orgs_dict:
                     self.add_default(def_org.org, True)
         for c in self._children:
             c.propagate_custom_orgs()
@@ -71,7 +72,7 @@ class Supervisory_Organization(base):
             error("Inavlid organization passed to add_default")
             raise TypeError
         do = Default_Organization(self, default_org, inherited)
-        self._default_orgs[default_org.org_type] = do
+        self._default_orgs_dict[default_org.org_type] = do
         return
 
     def add_role(self, role):
@@ -100,6 +101,9 @@ class Supervisory_Organization(base):
                 c.cycle_check(stack)
             stack.pop()
         return
+
+    def set_manager(self, role):
+        self._manager = role
 
     @property
     def traversed(self): return self._traversed
@@ -130,7 +134,7 @@ class Supervisory_Organization(base):
         return
 
     def get_default_orgs(self):
-        return self._default_orgs
+        return self._default_orgs_dict
 
     def to_html_collapse_table_w_roles(self):
         doc, tag, text = Doc().tagtext()
@@ -142,10 +146,15 @@ class Supervisory_Organization(base):
                             text("{} ({})".format(self.name, self.id))
                     with tag("span", style="font-size:0.8em", klass="panel-title"):
                         with tag("strong"):
+                            text(" Manager: ")
+                        if self._manager:
+                            text(" {} ".format(self._manager.get_workers()[0]))
+                        else:
+                            text("No Manager Assigned")
+                        with tag("strong"):
                             text("  Location: ")
                         text(" {} ".format(self._location))
                         doc.stag("br")
-
                         with tag("table"):
                             with tag("tr"):
                                 with tag("th"):
@@ -178,7 +187,7 @@ class Supervisory_Organization(base):
                                                 for col_heading in ["Organization Type", "Organization Name", "Inherited (T/F)"]:
                                                     with tag("th"):
                                                         text(col_heading)
-                                            for k, v in sorted(self._default_orgs.items(), key=operator.itemgetter(0)):
+                                            for k, v in sorted(self._default_orgs_dict.items(), key=operator.itemgetter(0)):
                                                 with tag("tr"):
                                                     for txt in [k.name, v.org, v.inherited]:
                                                         with tag("td"):
@@ -209,7 +218,7 @@ class Supervisory_Organization(base):
                         with tag("strong"):
                             text("Location: ")
                         text(" {} ".format(self._location))
-                        if len(self._default_orgs):
+                        if len(self._default_orgs_dict):
                             doc.stag("br")
                             with tag("strong"):
                                 with tag("a", ("data-toggle","collapse"), href="#Defaults{}".format(self.id)):
@@ -221,7 +230,7 @@ class Supervisory_Organization(base):
                                             with tag("th"):
                                                 text(col_heading)
                                     #for k, v in self._default_orgs.iteritems():
-                                    for k, v in sorted(self._default_orgs.items(), key=operator.itemgetter(0)):
+                                    for k, v in sorted(self._default_orgs_dict.items(), key=operator.itemgetter(0)):
                                         with tag("tr"):
                                             for txt in [k.name, v.org, v.inherited]:
                                                 with tag("td"):
@@ -252,14 +261,14 @@ class Supervisory_Organization(base):
                         with tag("strong"):
                             text("Location: ")
                         text(" {} ".format(self._location))
-                        if len(self._default_orgs):
+                        if len(self._default_orgs_dict):
                             doc.stag("br")
                             with tag("strong"):
                                 with tag("a", ("data-toggle","collapse"), href="#Defaults{}".format(self.id)):
                                     text("Defaults: ")
                             with tag("div", id="Defaults{}".format(self.id), klass="panel-collapse collapse"):
                                 with tag("ul", klass="list-group"):
-                                    for k, v in self._default_orgs.iteritems():
+                                    for k, v in self._default_orgs_dict.iteritems():
                                         with tag("li", klass="list-group-item", style="white-space: pre;margin-left: 10px; font-size:0.8em; padding-top:0px; padding-bottom:0px"):
                                             text("{:30}  {}".format(k.name, v))
 
@@ -289,11 +298,11 @@ class Supervisory_Organization(base):
                         with tag("strong"):
                             text("Location: ")
                         text(" {} ".format(self._location))
-                        if len(self._default_orgs):
+                        if len(self._default_orgs_dict):
                             doc.stag("br")
                             with tag("strong"):
                                 text("Defaults: ")
-                            for k, v in self._default_orgs.iteritems():
+                            for k, v in self._default_orgs_dict.iteritems():
                                 text(" {}:{}  ".format(k.name, v))
             if self._children:
                 with tag("div", id="{}".format(self.id), klass="panel-collapse collapse"):
@@ -302,6 +311,16 @@ class Supervisory_Organization(base):
                             with tag("li", klass="list-group-item"):
                                 doc.asis(c.to_html())
         return doc.getvalue()
+
+    def to_Assignment_Restrictions_and_Defaults_iLoad(self):
+        row = ["", "Organization_Reference_ID", "", self._org_id]
+        ctr = 1
+        for default_org in self._default_orgs_dict.values():
+            org = default_org.org
+            row += [ctr, "Organization_Type_ID", "", org.org_type.value] + [""] * 6 + ["Organization_Reference_ID", "", org.ref_id]
+            yield row
+            ctr += 1
+            row = [""] * 4
 
     def __repr__(self):
         return "{} ({})".format(self.name, self.id)
@@ -388,6 +407,8 @@ class Role(base):
         self._position_list = []
         self._sup_org = sup_org
         self._role = role_type
+        if role_type == Roles.Manager:
+            sup_org.set_manager(self)
         return
 
     def add_position(self, position):
@@ -410,6 +431,7 @@ class Role(base):
 
     def __eq__(self, other):
         return self.role_type == other.role_type
+
 
 class Default_Organization(base):
     """
