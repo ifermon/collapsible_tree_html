@@ -167,16 +167,13 @@ class Supervisory_Organization(base):
                                 with tag("td"):
                                     with tag("div", id="Roles{}".format(self.id), klass="panel-collapse collapse"):
                                         if self._role_list:
-                                            with tag("table"):
+                                            with tag("table", border=".5"):
                                                 for r in self._role_list:
                                                     with tag("tr"):
                                                         with tag("td"):
                                                             text(r.name)
                                                         with tag("td"):
                                                             w_list = r.get_workers()
-                                                            #if len(w_list) == 1:
-                                                                        #text(w_list[0])
-                                                            #else:
                                                             for w in w_list:
                                                                 text(str(w))
                                                                 doc.stag("br")

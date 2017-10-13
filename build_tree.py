@@ -291,13 +291,12 @@ def main(argv):
                     # If current_role_name has a value, then we process it. If not, we use the last one
                     if current_role_name:
                         role_type = convert_role_name_to_enum(current_role_name)
-                    role = Role(role_type, so)
-                    so.add_role(role)
+                        role = Role(role_type, so)
+                        so.add_role(role)
                     if current_position_id not in position_dict:
                         position = Position(current_position_id, so, role)
                         position_dict[current_position_id] = position
                     role.add_position(position_dict[current_position_id])
-
 
     if args.job_change and args.job_change: # Process job change file if given
         for filename in args.job_change:
