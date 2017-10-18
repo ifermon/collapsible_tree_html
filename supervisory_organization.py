@@ -4,6 +4,21 @@ import operator
 """
     A note about Organization vs. Supervisory Organization. Supervisory Organization is the "master". Organization
     is just an attribute. Organizations are things like Company, Cost Center, Segment, Region, etc
+    Defaults are those orgs association as a default for a supervisory org.
+    
+    Example
+    Sup Org 123 has a default company of ABC
+    
+    Organization ABC is of org type Company, and is a default value for sup org 123 (it 
+    might also be a default for other sup orgs)
+    
+    Example Roles:
+    A sup org has roles (e.g. manager, HR partner, etc).
+    
+    So sup org 123 has a manager with a position ID of 567-pos. That "Role" is of type Manger, 
+    position 567-pos, and the position is assigned to worker W123 whose name is John Doe.
+    And sup org 123 has 2 HR partners, so one role (HR Partner), two positions (pos 456 and pos 987), with
+    workers assigned to each of those positions
 """
 
 class base(object):
