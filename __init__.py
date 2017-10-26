@@ -45,24 +45,24 @@ class Org_Types(Enum):
     def __lt__(self, other):
         return self.name < other.name
 
-class Roles(Enum):
+class Role_Type(Enum):
     Manager = "Manager"
-    HR_Business_Support_Supervisory = "HR_Business_Support_Supervisory"
-    HR_Business_Partner_Supervisory = "HR_Business_Partner_Supervisory"
-    Compensation_COE_Partner = "Compensation_COE_Partner"
-    Executive_Comp_Leader = "Executive_Comp_Leader"
-    Executive_Compensation = "Executive_Compensation"
-    Global_Mobility_Partner = "Global_Mobility_Partner"
-    HR_Direct_HR_Partner_by_Supervisory_Org = "HR_Direct_HR_Partner_by_Supervisory_Org"
-    Organization_Partner = "Organization_Partner"
-    Stock_Partner = "Stock_Partner"
-    Talent_Partner = "Talent_Partner"
-    Succession_Partner = "Succession_Partner"
-    ASSIGNABLE_ROLE_6_127 = "ASSIGNABLE_ROLE_6_127"
-    ASSIGNABLE_ROLE_6_129 = "ASSIGNABLE_ROLE_6_129"
-    ASSIGNABLE_ROLE_6_130 = "ASSIGNABLE_ROLE_6_130"
-    Primary_Recruiter = "Primary_Recruiter"
-    HD_Operations_Leadership = "HD_Operations_Leadership"
+    HR_Business_Support_Supervisory = "HR Business Support Supervisory"
+    HR_Business_Partner_Supervisory = "HR Business Partner Supervisory"
+    #Compensation_COE_Partner = "Compensation_COE_Partner"
+    #Executive_Comp_Leader = "Executive_Comp_Leader"
+    #Executive_Compensation = "Executive_Compensation"
+    #Global_Mobility_Partner = "Global_Mobility_Partner"
+    #HR_Direct_HR_Partner_by_Supervisory_Org = "HR_Direct_HR_Partner_by_Supervisory_Org"
+    #Organization_Partner = "Organization_Partner"
+    #Stock_Partner = "Stock_Partner"
+    #Talent_Partner = "Talent_Partner"
+    #Succession_Partner = "Succession_Partner"
+    #ASSIGNABLE_ROLE_6_127 = "ASSIGNABLE_ROLE_6_127"
+    #ASSIGNABLE_ROLE_6_129 = "ASSIGNABLE_ROLE_6_129"
+    #ASSIGNABLE_ROLE_6_130 = "ASSIGNABLE_ROLE_6_130"
+    #Primary_Recruiter = "Primary_Recruiter"
+    #HD_Operations_Leadership = "HD_Operations_Leadership"
 
 
 

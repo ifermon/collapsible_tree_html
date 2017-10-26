@@ -94,9 +94,9 @@ class Supervisory_Organization(base):
         if type(role) != Role:
             error("Invalid role_type type passed")
             raise TypeError
-        if role in self._role_list:  # Dup roles are an issue if using "super" file. Remove existing and replace
-            self._role_list.remove(role)
-        self._role_list.append(role)
+        if role not in self._role_list:  # Dup roles are an issue if using "super" file. Do not overwrite
+            # We should handle both cases, but for now we'll default to not overwrite
+            self._role_list.append(role)
         return
 
     def add_child(self, sup_org):
@@ -334,6 +334,11 @@ class Supervisory_Organization(base):
             ctr += 1
             row = [""] * 4
 
+    def to_role_validation_csv(self):
+        for r in self._role_list:
+            for w in r.get_workers():
+                yield [self.id, self._name, r.name, w.name, w.emp_id]
+
     def __repr__(self):
         return "{} ({})".format(self.name, self.id)
 
@@ -410,7 +415,7 @@ class Position(base):
 
 class Role(base):
     def __init__(self, role_type, sup_org):
-        if type (role_type) != Roles:
+        if type (role_type) != Role_Type:
             error("Invalid role_type type passed")
             raise TypeError
         if type(sup_org) != Supervisory_Organization:
@@ -419,7 +424,7 @@ class Role(base):
         self._position_list = []
         self._sup_org = sup_org
         self._role = role_type
-        if role_type == Roles.Manager:
+        if role_type == Role_Type.Manager:
             sup_org.set_manager(self)
         return
 
@@ -433,7 +438,7 @@ class Role(base):
     @property
     def role_type(self): return self._role
     @property
-    def name(self): return self._role.name
+    def name(self): return self._role.value
 
     def get_workers(self):
         ret_list = []

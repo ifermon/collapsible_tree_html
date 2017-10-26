@@ -74,12 +74,13 @@ SUPER_ORG_NAME_I = 1
 SUPER_LOCATION_ID_I = 2
 SUPER_LOCATION_NAME_I = 3
 SUPER_MGR_ID_I = 4
-SUPER_MGR_NAME_I = 5
-SUPER_MGR_INHERITED_I = 6
-SUPER_PARENT_ID_I = 7
-SUPER_DATA_SOURCE_I = 8
-SUPER_DEF_COMP_ID_I = 9
-SUPER_DEF_COST_CTR_ID_I = 10
+SUPER_MGR_POS_ID_I = 5
+SUPER_MGR_NAME_I = 6
+SUPER_MGR_INHERITED_I = 7
+SUPER_PARENT_ID_I = 8
+SUPER_DATA_SOURCE_I = 9
+SUPER_DEF_COMP_ID_I = 10
+SUPER_DEF_COST_CTR_ID_I = 11
 
 # Indicies for Company, Cost Center and Custom Org files (name, ref id, org_type)
 COMP_NAME_I = 0
@@ -113,6 +114,7 @@ def parse_command_line(args):
     parser.add_argument("-iload", help="Generate an iLoad ready csv file for Supervisory Organization Assignment Restrictions and Defaults")
     parser.add_argument("-s", "--super", action="store_true", help="Use one or more file(s) that have everything but custom org defaults, default org names and location names")
     parser.add_argument("-propagate-custom-orgs", action="store_true", help="Propogate custom orgs down the hierarchy.")
+    parser.add_argument("-role-validation-report", help="Generate a csv file to be used for role validation")
     return parser.parse_args(args[1:])
 
 def convert_custom_org_type_to_enum(org_type_str):
@@ -124,12 +126,13 @@ def convert_custom_org_type_to_enum(org_type_str):
     return ot
 
 def convert_role_name_to_enum(role_name_str):
+    r = None
     try:
         rname = role_name_str.replace(" ", "_").replace("-", "_")
-        r = Roles[rname]
+        r = Role_Type[rname]
     except KeyError:
         error("Invalid role_type {}".format(rname))
-        sys.exit()
+        #sys.exit()
     return r
 
 def main(argv):
@@ -178,13 +181,15 @@ def main(argv):
                         top_level_sup_orgs.append(so)
 
                     # Create worker, link to position and sup org
-                    #worker = Worker(row[SUPER_MGR_NAME_I], row[SUPER_MGR_ID_I])
-                    #manager = Position(None, so, Role.MANAGER, worker)
-                    #so.add_role(manager)
-                    #if row[SUPER_MGR_INHERITED_I] == "No":
-                    #    manager.inherited = False
-                    #else:
-                    #    manager.inherited = True
+                    worker = Worker(row[SUPER_MGR_NAME_I], row[SUPER_MGR_ID_I])
+                    role = Role(Role_Type.Manager, so)
+                    manager = Position(row[SUPER_MGR_POS_ID_I], so, role, worker)
+                    role.add_position(manager)
+                    so.add_role(role)
+                    if row[SUPER_MGR_INHERITED_I] == "No":
+                        manager.inherited = False
+                    else:
+                        manager.inherited = True
 
                     # process defaults, may not exist if NON-SAP file
                     if len(row) > SUPER_DEF_COMP_ID_I:
@@ -291,6 +296,8 @@ def main(argv):
                     # If current_role_name has a value, then we process it. If not, we use the last one
                     if current_role_name:
                         role_type = convert_role_name_to_enum(current_role_name)
+                        if not role_type:
+                            continue
                         role = Role(role_type, so)
                         so.add_role(role)
                     if current_position_id not in position_dict:
@@ -415,6 +422,16 @@ def main(argv):
                 for row in so.to_Assignment_Restrictions_and_Defaults_iLoad():
                     writer.writerow(["", ctr] + row)
                 ctr += 1
+
+    # Generate a csv file to be used for role validation
+    if args.role_validation_report:
+        with open(args.role_validation_report, "wb") as csvfile:
+            writer = csv.writer(csvfile)
+            writer.writerow(["Supervisory Org ID", "Supervisory Org Name", "Role", "Employee Name", "Employee ID"])
+            for so in sup_org_dict.values():
+                for row in so.to_role_validation_csv():
+                    writer.writerow(row)
+
     # Now print
     doc, tag, text = Doc().tagtext()
     doc.asis("<!DOCTYPE html>")
