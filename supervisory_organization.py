@@ -17,7 +17,7 @@ import operator
     
     So sup org 123 has a manager with a position ID of 567-pos. That "Role" is of type Manger, 
     position 567-pos, and the position is assigned to worker W123 whose name is John Doe.
-    And sup org 123 has 2 HR partners, so one role (HR Partner), two positions (pos 456 and pos 987), with
+    And sup org 123 has 2 HR partners, so one role of type HR Partner, two positions (pos 456 and pos 987), with
     workers assigned to each of those positions
 """
 
@@ -91,9 +91,7 @@ class Supervisory_Organization(base):
         return
 
     def add_role(self, role):
-        if type(role) != Role:
-            error("Invalid role_type type passed")
-            raise TypeError
+        assert type(role) == Role, "Invalid type passed for role in add_role to so"
         if role not in self._role_list:  # Dup roles are an issue if using "super" file. Do not overwrite
             # We should handle both cases, but for now we'll default to not overwrite
             self._role_list.append(role)
@@ -118,6 +116,7 @@ class Supervisory_Organization(base):
         return
 
     def set_manager(self, role):
+        assert type(role) == Role, "Inavalid role assigned to set_manager"
         self._manager = role
 
     @property
@@ -147,6 +146,8 @@ class Supervisory_Organization(base):
         self._parent = parent
         parent.add_child(self)
         return
+    @property
+    def manager(self): return self._manager
 
     def get_default_orgs(self):
         return self._default_orgs_dict
@@ -373,17 +374,8 @@ class Position(base):
         it is specific to the supervisory org. So if one worker is manager for more than one org, they will have
         multiple Manager objects each with it's own position
     """
-    def __init__(self, position_id, supervisory_org, role, worker=None):
+    def __init__(self, position_id, worker=None):
         self._pos_id = position_id
-        self._inherited = False
-        if type(role) != Role:
-            error("Invalid type for role_type passed to position")
-            raise TypeError
-        self._role = role
-        if type(supervisory_org) != Supervisory_Organization:
-            error("Invalid org_type passed to Manager __init__")
-            raise TypeError
-        self._org = supervisory_org  # Object, not ID
         if worker:
             self.assign_worker(worker)
         else:
@@ -398,15 +390,9 @@ class Position(base):
         return
 
     @property
-    def inherited(self): return self._inherited
-    @inherited.setter
-    def inherited(self, inherited):
-        self._inherited = inherited
-        return
-    @property
-    def position(self): return self._pos_id
-    @property
     def worker(self): return self._worker
+    @property
+    def position_id(self): return self._pos_id
 
     def __repr__(self):
         ret_str = "Position ID: {} Worker: {} Inherited: {}".format(self._pos_id, self._worker, self._inherited)
@@ -426,6 +412,7 @@ class Role(base):
         self._role = role_type
         if role_type == Role_Type.Manager:
             sup_org.set_manager(self)
+        self._inherited = False
         return
 
     def add_position(self, position):
@@ -439,6 +426,13 @@ class Role(base):
     def role_type(self): return self._role
     @property
     def name(self): return self._role.value
+    @property
+    def inherited(self): return self._inherited
+    @inherited.setter
+    def inherited(self, inherited):
+        self._inherited = inherited
+        return
+
 
     def get_workers(self):
         ret_list = []

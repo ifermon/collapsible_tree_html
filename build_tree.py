@@ -167,9 +167,7 @@ def main(argv):
 
                     # Get location ref id and name
                     lid = row[SUPER_LOCATION_ID_I]
-                    if lid not in location_dict:
-                        location_dict[lid] = Location(lid, row[SUPER_LOCATION_NAME_I])
-                    loc = location_dict[lid]
+                    loc = location_dict.setdefault(lid, Location(lid, row[SUPER_LOCATION_NAME_I]))
 
                     # Create supervisory org and link to location
                     sup_org_id = row[SUPER_ORG_ID_I]
@@ -182,32 +180,29 @@ def main(argv):
 
                     # Create worker, link to position and sup org
                     worker = Worker(row[SUPER_MGR_NAME_I], row[SUPER_MGR_ID_I])
+                    if worker.emp_id not in worker_dict:
+                        worker_dict[worker.emp_id] = worker
                     role = Role(Role_Type.Manager, so)
-                    manager = Position(row[SUPER_MGR_POS_ID_I], so, role, worker)
+                    pid = row[SUPER_MGR_POS_ID_I]
+                    manager = position_dict.setdefault(pid, Position(pid, worker))
                     role.add_position(manager)
                     so.add_role(role)
+                    so.set_manager(role)
+
                     if row[SUPER_MGR_INHERITED_I] == "No":
-                        manager.inherited = False
+                        role.inherited = False
                     else:
-                        manager.inherited = True
+                        role.inherited = True
 
                     # process defaults, may not exist if NON-SAP file
                     if len(row) > SUPER_DEF_COMP_ID_I:
                         cost_ctr_id = row[SUPER_DEF_COST_CTR_ID_I]
                         company_id = row[SUPER_DEF_COMP_ID_I]
                         if cost_ctr_id:
-                            try:
-                                cc = org_dict[cost_ctr_id]
-                            except KeyError:
-                                cc = Organization(None, cost_ctr_id, Org_Types.COST_CENTER)
-                                org_dict[cost_ctr_id] = cc
+                            cc = org_dict.setdefault(cost_ctr_id, Organization(None, cost_ctr_id, Org_Types.COST_CENTER))
                             so.add_default(cc)
                         if company_id:
-                            try:
-                                comp = org_dict[company_id]
-                            except KeyError:
-                                comp = Organization(None, company_id, Org_Types.COMPANY)
-                                org_dict[company_id] = comp
+                            comp = org_dict.setdefault(company_id, Organization(None, company_id, Org_Types.COST_CENTER))
                             so.add_default(comp)
 
 
@@ -301,7 +296,7 @@ def main(argv):
                         role = Role(role_type, so)
                         so.add_role(role)
                     if current_position_id not in position_dict:
-                        position = Position(current_position_id, so, role)
+                        position = Position(current_position_id)
                         position_dict[current_position_id] = position
                     role.add_position(position_dict[current_position_id])
 
