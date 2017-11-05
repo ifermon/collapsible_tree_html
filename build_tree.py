@@ -132,7 +132,7 @@ def convert_role_name_to_enum(role_name_str):
         r = Role_Type[rname]
     except KeyError:
         error("Invalid role_type {}".format(rname))
-        #sys.exit()
+        r = None
     return r
 
 def main(argv):
@@ -289,16 +289,19 @@ def main(argv):
 
                     # At this point we should have a valid supervisory org and so should be defined
                     # If current_role_name has a value, then we process it. If not, we use the last one
+                    # If we are skipping it, then clear the last one
                     if current_role_name:
                         role_type = convert_role_name_to_enum(current_role_name)
-                        if not role_type:
+                        if not role_type or (role_type == Role_Type.Manager and args.super):
+                            role = None
                             continue
                         role = Role(role_type, so)
                         so.add_role(role)
-                    if current_position_id not in position_dict:
-                        position = Position(current_position_id)
-                        position_dict[current_position_id] = position
-                    role.add_position(position_dict[current_position_id])
+                    if role:
+                        if current_position_id not in position_dict:
+                            position = Position(current_position_id)
+                            position_dict[current_position_id] = position
+                        role.add_position(position_dict[current_position_id])
 
     if args.job_change and args.job_change: # Process job change file if given
         for filename in args.job_change:
@@ -337,6 +340,7 @@ def main(argv):
                     worker_dict[emp_id].name = "{} {}".format(fname, lname)
 
     if args.custom_org_defaults: # Get the custom org defaults (e.g. SEGMENT)
+        lfile = open('invalid_sup_orgs.txt', 'w')
         with open(args.custom_org_defaults, "rU") as csvfile:
             reader = csv.reader(csvfile)
             for row in reader:
@@ -357,6 +361,10 @@ def main(argv):
                     sup_org_dict[sup_org_id].add_default(cust_org)
                 except KeyError:
                     info("Invalid supervisory org {} found while loading custom defaults.".format(sup_org_id))
+                    lfile.write("Invalid supervisory org {} found while loading custom defaults.\n".format(sup_org_id))
+        lfile.close()
+
+
 
     if args.company: # Get company names by ref id
         info("Processing company name + reference ID file {}".format(args.company))
@@ -422,7 +430,7 @@ def main(argv):
     if args.role_validation_report:
         with open(args.role_validation_report, "wb") as csvfile:
             writer = csv.writer(csvfile)
-            writer.writerow(["Supervisory Org ID", "Supervisory Org Name", "Role", "Employee Name", "Employee ID"])
+            writer.writerow(["Supervisory Org ID", "Supervisory Org Name", "Location", "Role", "Employee Name", "Employee ID", "Superior Org ID", "Superior Org Name"])
             for so in sup_org_dict.values():
                 for row in so.to_role_validation_csv():
                     writer.writerow(row)
