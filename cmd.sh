@@ -11,5 +11,5 @@
     -job-change h.za-Job_Change_genmills3.csv \
     -job-change h.za-Job_Change_genmills3_NonSAP.csv \
     -role-validation-report Role_Validation_Report.csv \
-    dbo*Gold.csv \
+    dbo*COMBINED*Gold.csv \
     > t.html

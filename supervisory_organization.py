@@ -338,7 +338,7 @@ class Supervisory_Organization(base):
     def to_role_validation_csv(self):
         for r in self._role_list:
             for w in r.get_workers():
-                yield [self.id, self._name, self.location, r.name, w.name, w.emp_id, self.parent_id, self.parent]
+                yield [self.id, self._name, self.location, self.location.ref_id[9:11], r.name, w.name, w.emp_id, self.parent_id, self.parent]
 
     def __repr__(self):
         return "{} ({})".format(self.name, self.id)

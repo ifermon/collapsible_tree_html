@@ -41,13 +41,16 @@
         company ref id
         cost center ref id
 
-
+    TODO:
+        - And names of files (argument) and timestamps of created / modified to the html
 """
 import csv
 import argparse
 import datetime as dt
 from supervisory_organization import Location, Supervisory_Organization, Position, Default_Organization, Worker, Organization, Role
 from __init__ import *
+from os.path import getmtime
+from time import ctime
 
 ORG_ID_I = 5
 EFFECTIVE_DATE_I = 6
@@ -430,7 +433,7 @@ def main(argv):
     if args.role_validation_report:
         with open(args.role_validation_report, "wb") as csvfile:
             writer = csv.writer(csvfile)
-            writer.writerow(["Supervisory Org ID", "Supervisory Org Name", "Location", "Role", "Employee Name", "Employee ID", "Superior Org ID", "Superior Org Name"])
+            writer.writerow(["Supervisory Org ID", "Supervisory Org Name", "Location", "Country Code", "Role", "Employee Name", "Employee ID", "Superior Org ID", "Superior Org Name"])
             for so in sup_org_dict.values():
                 for row in so.to_role_validation_csv():
                     writer.writerow(row)
@@ -452,6 +455,48 @@ def main(argv):
                 with tag("div", klass="panel-group"):
                     for tlo in top_level_sup_orgs:
                         doc.asis(tlo.to_html_collapse_table_w_roles())
+                    with tag("div", klass="panel panel-default"):
+                        with tag("div", klass="panel-heading", display="inline"):
+                            with tag("p"):
+                                with tag("a", ("data-toggle", "collapse"), href="#File_Info"):
+                                    with tag("b", style="font-size:0.8em", klass="panel-title"):
+                                        text("File Information")
+                        with tag("div", id="File_Info", style="font-size:0.8em", klass="panel-collapse collapse"):
+                            with tag("table", border=".5"):
+                                with tag("tr"):
+                                    with tag("th"):
+                                        text("File Name")
+                                    with tag("th"):
+                                        text("Last Updated")
+                                    with tag("th"):
+                                        text("File Description")
+                                for lf in [(args.sup_org_file, "Supervisory organizations - can be iLoad or 'super' format"),
+                                        (args.job_change, "iLoad that links position ID to employee ID"),
+                                        (args.pre_hire, "iLoad that maps employee ID to employee name")]:
+                                    desc = lf[1]
+                                    for f in lf[0]:
+                                        with tag("tr"):
+                                            with tag("td"):
+                                                text(f)
+                                            with tag("td"):
+                                                text("{}".format(ctime(getmtime(f))))
+                                            with tag("td"):
+                                                text(desc)
+                                for f in [(args.company, "Company name and reference ID"),
+                                        (args.cost_center, "Cost center name and reference ID"),
+                                        (args.custom_org_defaults, "Default region and segment for supervisory organizations"),
+                                        (args.location, "Provides mapping of location reference IDs to location names"),
+                                        (args.region, "Region name and reference ID"),
+                                        (args.custom_organization, "List of custom organization name and IDs")]:
+                                    if f[0]:
+                                        debug("Working with {}".format(f[0]))
+                                        with tag("tr"):
+                                            with tag("td"):
+                                                text("{}".format(f[0]))
+                                            with tag("td"):
+                                                text("{}".format(ctime(getmtime(f[0]))))
+                                            with tag("td"):
+                                                text("{}".format(f[1]))
     print(doc.getvalue())
 
     return
