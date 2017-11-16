@@ -71,20 +71,6 @@ JOB_CHANGE_FILE_EMP_ID_I = 16
 JOB_CHANGE_FILE_POS_ID_I = 33
 ROW_NO_I = 1
 
-# Indicies for Superfile
-SUPER_ORG_ID_I = 0
-SUPER_ORG_NAME_I = 1
-SUPER_LOCATION_ID_I = 2
-SUPER_LOCATION_NAME_I = 3
-SUPER_MGR_ID_I = 4
-SUPER_MGR_POS_ID_I = 5
-SUPER_MGR_NAME_I = 6
-SUPER_MGR_INHERITED_I = 7
-SUPER_PARENT_ID_I = 8
-SUPER_DATA_SOURCE_I = 9
-SUPER_DEF_COMP_ID_I = 10
-SUPER_DEF_COST_CTR_ID_I = 11
-
 # Indicies for Company, Cost Center and Custom Org files (name, ref id, org_type)
 COMP_NAME_I = 0
 COMP_REF_ID_I = 1
@@ -162,6 +148,20 @@ def main(argv):
             for row in reader:
                 ctr += 1 # Keep track of line number for debugging purposes
                 if args.super: # Not iLoads, summary files provided by Mark
+                    # Indicies for Superfile
+                    SUPER_ORG_ID_I = 0
+                    SUPER_ORG_NAME_I = 1
+                    SUPER_LOCATION_ID_I = 2
+                    SUPER_LOCATION_NAME_I = 3
+                    SUPER_MGR_ID_I = 4
+                    SUPER_MGR_POS_ID_I = 5
+                    SUPER_MGR_NAME_I = 6
+                    SUPER_MGR_INHERITED_I = 7
+                    SUPER_PARENT_ID_I = 8
+                    SUPER_DATA_SOURCE_I = 9
+                    SUPER_DEF_COMP_ID_I = 10
+                    SUPER_DEF_COST_CTR_ID_I = 11
+
                     try: # skip header rows, look for number
                         int(row[SUPER_ORG_ID_I])
                     except ValueError:
@@ -205,7 +205,7 @@ def main(argv):
                             cc = org_dict.setdefault(cost_ctr_id, Organization(None, cost_ctr_id, Org_Types.COST_CENTER))
                             so.add_default(cc)
                         if company_id:
-                            comp = org_dict.setdefault(company_id, Organization(None, company_id, Org_Types.COST_CENTER))
+                            comp = org_dict.setdefault(company_id, Organization(None, company_id, Org_Types.COMPANY))
                             so.add_default(comp)
 
 
@@ -422,6 +422,7 @@ def main(argv):
     # Generate iLoad for org defaults if specified
     if args.iload:
         with open(args.iload, "wb") as csvfile:
+            info("Writing iLoad file <{}>.".format(args.iload))
             writer = csv.writer(csvfile)
             ctr = 1
             for so in sup_org_dict.values():
@@ -474,12 +475,18 @@ def main(argv):
                                         (args.job_change, "iLoad that links position ID to employee ID"),
                                         (args.pre_hire, "iLoad that maps employee ID to employee name")]:
                                     desc = lf[1]
+                                    NO_FILE_SPECIFIED = "No file specified."
+                                    if not lf[0]:
+                                        lf = ([NO_FILE_SPECIFIED, ], lf[1])
                                     for f in lf[0]:
                                         with tag("tr"):
                                             with tag("td"):
                                                 text(f)
                                             with tag("td"):
-                                                text("{}".format(ctime(getmtime(f))))
+                                                if f == NO_FILE_SPECIFIED:
+                                                    text("N/A")
+                                                else:
+                                                    text("{}".format(ctime(getmtime(f))))
                                             with tag("td"):
                                                 text(desc)
                                 for f in [(args.company, "Company name and reference ID"),
